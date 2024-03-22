@@ -1,0 +1,11 @@
+project = "lcarsstarter"
+version = 1
+author = "Frank Holler"
+
+[folder]
+base = "/srv/lcarsstarter"
+git = ".git"
+venv = ".venv"
+config = "config"
+
+[git]
