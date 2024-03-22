@@ -9,3 +9,4 @@ venv = ".venv"
 config = "config"
 
 [git]
+remote = "https://github.com/fholler0371/lcarsstarter.git"
