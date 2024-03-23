@@ -13,3 +13,5 @@ cmd_folder = "/usr/bin"
 [git]
 remote = "https://github.com/fholler0371/lcarsstarter.git"
 folder = "lcarsstarter"
+#pull = false
+

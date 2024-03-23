@@ -6,8 +6,6 @@ import os
 import pathlib
 import argparse
 
-from pprint import pprint
-
 
 def load_config() -> dict:
     try:
