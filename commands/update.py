@@ -92,6 +92,12 @@ async def apt(apt_def: list) -> None:
                                                                 stderr=asyncio.subprocess.PIPE, 
                                                                 stdout=asyncio.subprocess.PIPE)
     await p.wait()
+    
+async def set_language(lang: str) -> None:
+    p = await asyncio.subprocess.create_subprocess_shell(f'sudo lcars-language -s {lang}', 
+                                                                stderr=asyncio.subprocess.PIPE, 
+                                                                stdout=asyncio.subprocess.PIPE)
+    await p.wait()
  
 async def main():
     parser = argparse.ArgumentParser(prog='lcars-update',
@@ -109,6 +115,7 @@ async def main():
         await apt(cfg.get('apt', {}).get('install', []))
         await create_update_command(cfg.get('folder', {}))
         await create_commands(cfg.get('folder', {}), cfg.get('commands', {}))
+        await set_language(cfg.get('language', ''))
 
 if __name__ == "__main__":
     asyncio.run(main())

@@ -1,6 +1,7 @@
 project = "lcarsstarter"
 version = 1
 author = "Frank Holler"
+language = "de_DE.utf8"
 
 [folder]
 base = "/srv/lcarsstarter"
@@ -20,6 +21,7 @@ install = ["nano"]
 
 [commands]
 config = true
+language = true
 
 [helper_programms]
 editor = "nano"
