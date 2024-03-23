@@ -87,16 +87,27 @@ async def create_update_command(base_folder: str, folder_def: dict) -> None:
     await p.wait()
     with (run_folder / 'lcars-update.sh').open('w') as f:
         f.write('#!/usr/bin/bash\n\n')
-        f.write(f'pushd {base_folder}\n\n')
+        f.write(f'pushd {base_folder} > /dev/null\n\n')
         f.write(f'{folder_def.get("venv", "")}/bin/python3 {folder_def.get("git", "")}/lcarsstarter/commands/update.py -p\n')
         f.write(f'{folder_def.get("venv", "")}/bin/python3 {folder_def.get("git", "")}/lcarsstarter/commands/update.py\n\n')
-        f.write('popd\n')
-    p = await asyncio.subprocess.create_subprocess_shell(f'chmod 555 {str(run_folder / "lcars-update.sh")}', 
+        f.write('popd > /dev/null\n')
+    p = await asyncio.subprocess.create_subprocess_shell(f'chmod 755 {str(run_folder / "lcars-update.sh")}', 
                                                          stderr=asyncio.subprocess.PIPE, 
                                                          stdout=asyncio.subprocess.PIPE)
     await p.wait()
-        
+    bin_file = pathlib.Path(folder_def.get('cmd_folder', '')) / 'lcars-update'
+    p = await asyncio.subprocess.create_subprocess_shell(f'rm {bin_file}', 
+                                                         stderr=asyncio.subprocess.PIPE, 
+                                                         stdout=asyncio.subprocess.PIPE)
+    await p.wait()
+    p = await asyncio.subprocess.create_subprocess_shell(f'sudo ln -s {str(run_folder)}/lcars-update.sh {bin_file}', 
+                                                         stderr=asyncio.subprocess.PIPE, 
+                                                         stdout=asyncio.subprocess.PIPE)
+    await p.wait()
     
+async def run_update() -> None:
+    p = await asyncio.subprocess.create_subprocess_shell('lcars-update')
+    await p.wait()
 
 async def main() -> None:
     parser = argparse.ArgumentParser(prog='setup',
@@ -112,6 +123,8 @@ async def main() -> None:
     async with asyncio.TaskGroup() as tg:
         tg.create_task(copy_config(base_folder, cfg.get('folder', {})))
         tg.create_task(create_update_command(base_folder, cfg.get('folder', {})))
+    await run_update()
+    
 @atexit.register
 def something_went_wrong() -> None:
     print('Fehler ist aufgetreten')
