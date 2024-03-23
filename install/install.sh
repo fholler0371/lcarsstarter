@@ -12,4 +12,9 @@ then
     exit 1
 fi
 
-python3 setup.py
+if [ -z "$1" ] 
+then
+    python3 setup.py
+else
+    python3 setup.py -f "$1"
+fi
