@@ -94,7 +94,7 @@ async def create_update_command(base_folder: str, folder_def: dict) -> None:
                                                          stdout=asyncio.subprocess.PIPE)
     await p.wait()
     bin_file = pathlib.Path(folder_def.get('cmd_folder', '')) / 'lcars-update'
-    p = await asyncio.subprocess.create_subprocess_shell(f'rm {bin_file}', 
+    p = await asyncio.subprocess.create_subprocess_shell(f'sudo rm {bin_file}', 
                                                          stderr=asyncio.subprocess.PIPE, 
                                                          stdout=asyncio.subprocess.PIPE)
     await p.wait()

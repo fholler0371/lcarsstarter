@@ -15,3 +15,11 @@ remote = "https://github.com/fholler0371/lcarsstarter.git"
 folder = "lcarsstarter"
 #pull = false
 
+[apt]
+install = ["nano"]
+
+[commands]
+config = true
+
+[helper_programms]
+editor = "nano"
