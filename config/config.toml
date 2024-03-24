@@ -10,14 +10,16 @@ venv = ".venv"
 config = "config"
 run = "run"
 cmd_folder = "/usr/bin"
+data = "data"
 
 [git]
 remote = "https://github.com/fholler0371/lcarsstarter.git"
 folder = "lcarsstarter"
 #pull = false
 
-[apt]
-install = ["nano"]
+[setup]
+apt = ["nano"]
+folder = ["data"]
 
 [commands]
 config = true
@@ -25,3 +27,9 @@ language = true
 
 [helper_programms]
 editor = "nano"
+
+[[plugin]]
+name = "apt"
+remote = "https://github.com/fholler0371/lcars_plugin_apt.git"
+pull = true
+install = true

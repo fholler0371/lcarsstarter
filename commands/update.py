@@ -4,6 +4,12 @@ import sys
 import pathlib
 import tomllib
 import shutil
+import importlib.util
+import os
+import tempfile
+
+APT_LOCK : asyncio.Lock = asyncio.Lock()
+PIP_LOCK : asyncio.Lock = asyncio.Lock()
 
 
 async def pull_git(folder_def: dict, git_def: dict) -> None:
@@ -88,16 +94,95 @@ async def create_commands(folder_def:dict, command_dev: dict) -> None:
             await p.wait()
             
 async def apt(apt_def: list) -> None:
-    p = await asyncio.subprocess.create_subprocess_shell(f'sudo apt update && sudo apt install {" ".join(apt_def)}', 
+    async with APT_LOCK:
+        p = await asyncio.subprocess.create_subprocess_shell(f'sudo apt update && sudo apt install {" ".join(apt_def)}', 
+                                                                    stderr=asyncio.subprocess.PIPE, 
+                                                                    stdout=asyncio.subprocess.PIPE)
+        await p.wait()
+    
+async def pip_install(folder_def: dict, moduls: list) -> None:
+    pip_cmd = pathlib.Path(folder_def.get('base', '')) / pathlib.Path(folder_def.get('venv', '')) / 'bin/pip3'
+    for modul in moduls:
+        async with PIP_LOCK:
+            p = await asyncio.subprocess.create_subprocess_shell(f'{pip_cmd} install {modul}', 
+                                                                    stderr=asyncio.subprocess.PIPE, 
+                                                                    stdout=asyncio.subprocess.PIPE)
+            await p.wait()
+
+async def create_folder(folder_def: dict, folders: list) -> None:
+    for folder in folders:
+        p = await asyncio.subprocess.create_subprocess_shell(f'mkdir -p {folder_def.get("base", "")}/{folder_def.get(folder, "")}', 
                                                                 stderr=asyncio.subprocess.PIPE, 
                                                                 stdout=asyncio.subprocess.PIPE)
-    await p.wait()
-    
+        await p.wait()
+
 async def set_language(lang: str) -> None:
     p = await asyncio.subprocess.create_subprocess_shell(f'sudo lcars-language -s {lang}', 
                                                                 stderr=asyncio.subprocess.PIPE, 
                                                                 stdout=asyncio.subprocess.PIPE)
     await p.wait()
+    
+async def install_systemd(systemd_def: dict) -> None:
+    tmp = tempfile.NamedTemporaryFile(delete=False)
+    try:
+        tmp.write(systemd_def['content'].encode())
+        tmp.close()
+        if systemd_def.get('start', True):
+            service = systemd_def["name"]
+            p = await asyncio.subprocess.create_subprocess_shell(f'sudo systemctl disable {service} && sudo systemctl stop {service}', 
+                                                                    stderr=asyncio.subprocess.PIPE, 
+                                                                    stdout=asyncio.subprocess.PIPE)
+            await p.wait()
+        p = await asyncio.subprocess.create_subprocess_shell(f'sudo cp {tmp.name} /etc/systemd/system/{systemd_def["name"]}', 
+                                                                stderr=asyncio.subprocess.PIPE, 
+                                                                stdout=asyncio.subprocess.PIPE)
+        await p.wait()
+        p = await asyncio.subprocess.create_subprocess_shell(f'sudo chmod 444 /etc/systemd/system/{systemd_def["name"]}', 
+                                                                stderr=asyncio.subprocess.PIPE, 
+                                                                stdout=asyncio.subprocess.PIPE)
+        await p.wait()
+        if systemd_def.get('start', True):
+            p = await asyncio.subprocess.create_subprocess_shell(f'sudo systemctl enable {service} && sudo systemctl start {service}', 
+                                                                    stderr=asyncio.subprocess.PIPE, 
+                                                                    stdout=asyncio.subprocess.PIPE)
+            await p.wait()
+    finally:
+        tmp.close()
+        os.unlink(tmp.name)
+
+async def install_plugin(cfg: dict, plugin_data: dict) -> None:
+    folder = plugin_data.get('remote', '').split('/')[-1].split('.')[0]
+    folder_def = cfg.get('folder', {})
+    git_folder = pathlib.Path(folder_def.get('base', '')) / folder_def.get('git', '')
+    if plugin_data.get('pull', True):
+        if (git_folder / folder).exists():
+            p = await asyncio.subprocess.create_subprocess_shell(f'cd {str(git_folder / folder)} && git pull', 
+                                                                stderr=asyncio.subprocess.PIPE, 
+                                                                stdout=asyncio.subprocess.PIPE)
+        else:
+            p = await asyncio.subprocess.create_subprocess_shell(f'cd {str(git_folder)} && git clone {plugin_data.get("remote", "")}', 
+                                                                stderr=asyncio.subprocess.PIPE, 
+                                                                stdout=asyncio.subprocess.PIPE)
+        _, err = await p.communicate()
+        if err.decode() != '':
+            print(err.decode())
+    if not (git_folder / folder).exists():
+        return
+    if plugin_data.get('install', True):
+        spec=importlib.util.spec_from_file_location(folder, (git_folder / folder / 'install/install.py'))
+        foo = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(foo)
+        todo = await foo.install(cfg)
+        if 'requirements' in todo:
+            await pip_install(cfg.get('folder', ''), todo['requirements'])
+        if 'systemd' in todo:
+            for job in todo['systemd']:
+                await install_systemd(job)
+    
+async def install_plugins(cfg:dict) -> None:
+    async with asyncio.TaskGroup() as tg:
+        for idx, plugin_data in enumerate(cfg.get('plugins', [])):
+            tg.create_task(install_plugin(cfg, plugin_data))
  
 async def main():
     parser = argparse.ArgumentParser(prog='lcars-update',
@@ -112,10 +197,12 @@ async def main():
             await pull_git(cfg.get('folder', {}), cfg.get('git', {}))
             await update_config(cfg.get('folder', {}))
     else:
-        await apt(cfg.get('apt', {}).get('install', []))
+        await apt(cfg.get('setup', {}).get('apt', []))
+        await create_folder(cfg.get('folder', {}), cfg.get('setup', {}).get('folder', []))
         await create_update_command(cfg.get('folder', {}))
         await create_commands(cfg.get('folder', {}), cfg.get('commands', {}))
         await set_language(cfg.get('language', ''))
+        await install_plugins(cfg)
 
 if __name__ == "__main__":
     asyncio.run(main())
