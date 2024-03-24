@@ -93,6 +93,27 @@ async def create_commands(folder_def:dict, command_dev: dict) -> None:
                                                          stdout=asyncio.subprocess.PIPE)
             await p.wait()
             
+async def create_command_plugin(folder_def:dict, cmd: str, link: str) -> None:
+    bin_file = pathlib.Path(folder_def.get('cmd_folder', '')) / f'lcars-{cmd}'
+    p = await asyncio.subprocess.create_subprocess_shell(f'sudo rm {bin_file}', 
+                                                             stderr=asyncio.subprocess.PIPE, 
+                                                             stdout=asyncio.subprocess.PIPE)
+    await p.wait()
+    sh_file = pathlib.Path(folder_def.get('base', '')) / folder_def.get('run', '') / f"{cmd}.sh"
+    with sh_file.open('w') as f:
+        f.write('#!/usr/bin/bash\n\n')
+        f.write(f'pushd {folder_def.get("base", "")} > /dev/null\n\n')
+        f.write(f'{folder_def.get("venv", "")}/bin/python3 {link} "$@"\n')
+        f.write('popd > /dev/null\n')
+    p = await asyncio.subprocess.create_subprocess_shell(f'chmod 755 {sh_file}', 
+                                                         stderr=asyncio.subprocess.PIPE, 
+                                                         stdout=asyncio.subprocess.PIPE)
+    await p.wait()
+    p = await asyncio.subprocess.create_subprocess_shell(f'sudo ln -s {sh_file} {bin_file}', 
+                                                         stderr=asyncio.subprocess.PIPE, 
+                                                         stdout=asyncio.subprocess.PIPE)
+    await p.wait()
+
 async def apt(apt_def: list) -> None:
     async with APT_LOCK:
         p = await asyncio.subprocess.create_subprocess_shell(f'sudo apt update && sudo apt install {" ".join(apt_def)}', 
@@ -178,6 +199,9 @@ async def install_plugin(cfg: dict, plugin_data: dict) -> None:
         if 'systemd' in todo:
             for job in todo['systemd']:
                 await install_systemd(job)
+        if 'run' in todo:
+            for cmd, link in todo['run'].items():
+                await create_command_plugin(cfg.get('folder', ''), cmd, link)
     
 async def install_plugins(cfg:dict) -> None:
     async with asyncio.TaskGroup() as tg:

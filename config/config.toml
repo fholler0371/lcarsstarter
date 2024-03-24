@@ -33,3 +33,12 @@ name = "apt"
 remote = "https://github.com/fholler0371/lcars_plugin_apt.git"
 pull = true
 install = true
+
+[[plugins]]
+name = "status"
+remote = "https://github.com/fholler0371/lcars_plugin_status.git"
+pull = true
+install = true
+drive.root = "/dev/mmcblk0p2"
+net.LAN = "eth0"
+net.Wifi = "wlan0"
