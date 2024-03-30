@@ -42,3 +42,17 @@ install = true
 drive.root = "/dev/mmcblk0p2"
 net.LAN = "eth0"
 net.Wifi = "wlan0"
+
+[[plugins]]
+name = "network"
+remote = "https://github.com/fholler0371/lcars_plugin_network.git"
+pull = true
+install = true
+wifi.default = "ssid_1"
+wifi.ssid_1 = "password"
+wifi.ssid_2 = "password"
+mode.eth0.method = "auto"
+mode.eth1.method = "manual"
+mode.eth1.ip = "192.168.0.10/23"
+mode.eth1.gateway = "192.168.1.1"
+mode.eth1.dns = "192.168.1.2"

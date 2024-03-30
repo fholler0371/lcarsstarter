@@ -167,6 +167,10 @@ async def install_systemd(systemd_def: dict) -> None:
                                                                     stderr=asyncio.subprocess.PIPE, 
                                                                     stdout=asyncio.subprocess.PIPE)
             await p.wait()
+        p = await asyncio.subprocess.create_subprocess_shell(f'sudo systemctl daemon-reload', 
+                                                                    stderr=asyncio.subprocess.PIPE, 
+                                                                    stdout=asyncio.subprocess.PIPE)
+        await p.wait()
     finally:
         tmp.close()
         os.unlink(tmp.name)
