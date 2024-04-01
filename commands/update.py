@@ -7,6 +7,7 @@ import shutil
 import importlib.util
 import os
 import tempfile
+import socket
 
 APT_LOCK : asyncio.Lock = asyncio.Lock()
 PIP_LOCK : asyncio.Lock = asyncio.Lock()
@@ -211,8 +212,24 @@ async def install_plugins(cfg:dict) -> None:
     async with asyncio.TaskGroup() as tg:
         for idx, plugin_data in enumerate(cfg.get('plugins', [])):
             tg.create_task(install_plugin(cfg, plugin_data))
+            
+async def link_config(lcars_base: str, config_file: str)->None:
+    if lcars_base is None:
+        return
+    p = await asyncio.subprocess.create_subprocess_shell(f'sudo mkdir -p {lcars_base}/config/hosts/{socket.getfqdn()}', 
+                                                                stderr=asyncio.subprocess.PIPE, 
+                                                                stdout=asyncio.subprocess.PIPE)
+    await p.wait()
+    p = await asyncio.subprocess.create_subprocess_shell(f'sudo chown {os.getuid()}:{os.getgid()} -R {lcars_base}', 
+                                                                stderr=asyncio.subprocess.PIPE, 
+                                                                stdout=asyncio.subprocess.PIPE)
+    await p.wait()
+    p = await asyncio.subprocess.create_subprocess_shell(f'ln -s {config_file} {lcars_base}/config/hosts/{socket.getfqdn()}/starter_config.toml', 
+                                                                stderr=asyncio.subprocess.PIPE, 
+                                                                stdout=asyncio.subprocess.PIPE)
+    await p.wait()
  
-async def main():
+async def main()->None:
     parser = argparse.ArgumentParser(prog='lcars-update',
                                      description='Aktualiesiert lcars')
     parser.add_argument('-p', action='store_true', dest='pre_run')
@@ -231,6 +248,8 @@ async def main():
         await create_commands(cfg.get('folder', {}), cfg.get('commands', {}))
         await set_language(cfg.get('language', ''))
         await install_plugins(cfg)
+        await link_config(cfg.get('setup', {}).get('lcars_base_folder'),
+                          pathlib.Path('/'.join(__file__.split('/')[:-4])) / 'config/config.toml')
 
 if __name__ == "__main__":
     asyncio.run(main())
