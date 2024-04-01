@@ -15,11 +15,12 @@ data = "data"
 [git]
 remote = "https://github.com/fholler0371/lcarsstarter.git"
 folder = "lcarsstarter"
-#pull = false
+pull = true
 
 [setup]
 apt = ["nano"]
 folder = ["data"]
+#lcars_base_folder = "/srv/lcars"
 
 [commands]
 config = true

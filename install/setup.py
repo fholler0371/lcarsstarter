@@ -76,6 +76,7 @@ async def copy_config(base_folder:str, folder_def: dict):
                 if folder_section and line[:-1].replace(' ', '').startswith('base='):
                     line = f'base = "{base_folder}"\n'
                 f_out.write(line)
+    
             
 async def create_update_command(base_folder: str, folder_def: dict) -> None:
     run_folder = pathlib.Path(base_folder) / folder_def.get('run', '')
